@@ -19,7 +19,7 @@ class Post(models.Model):
     )
     title = models.CharField(max_length=64)
     body = models.TextField()
-    creted_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     
     
 class Comment(models.Model):
