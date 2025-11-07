@@ -42,11 +42,11 @@ class UserModelAdmin(admin.ModelAdmin):
         "date_joined",
         "last_login",
     )
-    # search_fields = (
-    #     "id",
-    #     "username",
-    #     "email",
-    # )
+    search_fields = (
+        "id",
+        "username",
+        "email",
+    )
     list_filter = (
         "is_staff",
         "is_superuser",
@@ -87,6 +87,9 @@ class PostModelAdmin(admin.ModelAdmin):
     
     def get_comment_count(self, obj):
         return obj.comments.count()
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("comments")
 
 
 @admin.register(Comment)
@@ -107,6 +110,9 @@ class CommentModelAdmin(admin.ModelAdmin):
         AuthorFilter,
         PostFilter,
     )
+    raw_id_fields = (
+        "author",
+    )
 
 
 @admin.register(Reaction)
@@ -121,6 +127,10 @@ class ReactionModelAdmin(admin.ModelAdmin):
         PostFilter,
         AuthorFilter,
         ("value", ChoiceDropdownFilter),
+    )
+    autocomplete_fields = (
+        "author",
+        "post",
     )
 
 
