@@ -1,10 +1,11 @@
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.views import PermissionDenied
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from general.api.serializers import UserListSerializer, UserRegistrationSerializer, UserRetrieveSerializer
-from general.models import User
+from general.api.serializers import PostCreateUpdateSerializer, PostListSerializer, PostRetrieveSerializer, UserListSerializer, UserRegistrationSerializer, UserRetrieveSerializer
+from general.models import Post, User
 
 
 class UserViewSet(
@@ -66,3 +67,27 @@ class UserViewSet(
         user = self.get_object()
         request.user.friends.remove(user)
         return Response("Friend removed")
+    
+    
+class PostViewSet(ModelViewSet):
+    queryset = Post.objects.all().order_by("-id")
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.action == "list":
+            return PostListSerializer
+        elif self.action == "retrieve":
+            return PostRetrieveSerializer
+        return PostCreateUpdateSerializer
+    
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        
+        if instance.author != self.request.user:
+            raise PermissionDenied("ВЫ НЕ ЯВЛЯЕТЕСЬ АВТОРОМ!")
+        serializer.save()
+        
+    def perform_destroy(self, instance):
+        if instance.author != self.request.user:
+            raise PermissionDenied("ВЫ НЕ ЯВЛЯЕТЕСЬ АВТОРОМ!")
+        instance.delete()
