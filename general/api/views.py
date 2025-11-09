@@ -1,19 +1,23 @@
 from rest_framework.viewsets import GenericViewSet
-from rest_framework.mixins import CreateModelMixin, ListModelMixin
+from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from general.api.serializers import UserListSerializer, UserRegistrationSerializer
+from general.api.serializers import UserListSerializer, UserRegistrationSerializer, UserRetrieveSerializer
 from general.models import User
 
 
 class UserViewSet(
     CreateModelMixin,
     ListModelMixin,
+    RetrieveModelMixin,
     GenericViewSet
 ):
     queryset = User.objects.all().order_by("-id")
+
     def get_serializer_class(self):
         if self.action == "create":
             return UserRegistrationSerializer
+        if self.action == "retrieve":
+            return UserRetrieveSerializer
         return UserListSerializer
     
     def get_permissions(self):
