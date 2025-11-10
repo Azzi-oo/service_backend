@@ -1,6 +1,5 @@
-from tokenize import Comment
 from rest_framework import serializers
-from general.models import Post, User
+from general.models import Post, User, Comment
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
