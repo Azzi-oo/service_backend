@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from general.api.serializers import CommentSerializer, PostCreateUpdateSerializer, PostListSerializer, PostRetrieveSerializer, UserListSerializer, UserRegistrationSerializer, UserRetrieveSerializer
+from general.api.serializers import CommentSerializer, PostCreateUpdateSerializer, PostListSerializer, PostRetrieveSerializer, ReactionSerializer, UserListSerializer, UserRegistrationSerializer, UserRetrieveSerializer
 from general.models import Comment, Post, User
 
 
@@ -110,3 +110,12 @@ class CommentViewSet(
         if instance.author != self.request.user:
             raise PermissionDenied("Вы не являетесь автором этого коммента.")
         instance.delete()
+
+
+class ReactionViewSet(
+    CreateModelMixin,
+    GenericViewSet,
+):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ReactionSerializer
+    
