@@ -1,5 +1,7 @@
+from django.db.models import Q
 from rest_framework import serializers
-from general.models import Post, Reaction, User, Comment
+from rest_framework.utils import representation
+from general.models import Chat, Message, Post, Reaction, User, Comment
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -188,4 +190,49 @@ class ReactionSerializer(serializers.ModelSerializer):
         
         return reaction
 
+
+class ChatSerializer(serializers.ModelSerializer):
+    user_1 = serializers.HiddenField(
+        default=serializers.CurrentUserDefault(),
+    )   
+    # companion = serializers.PrimaryKeyRelatedField(
+    #     queryset=User.objects.all(),
+    #     write_only=True,
+    # )
+    
+    class Meta:
+        model = Chat
+        fields = ("id", "user_1", "user_2")
         
+    def create(self, validated_data):
+        request_user = validated_data["user_1"]
+        second_user = validated_data["user_2"]
+        
+        chat = Chat.objects.filter(
+            Q(user_1=request_user, user_2=second_user)
+            | Q(user_1=second_user, user_2=request_user)
+        ).first()
+        if not chat:
+            chat = Chat.objects.create(
+                user_1=request_user,
+                user_2=second_user,
+            )
+        
+        return chat
+    
+    def to_representation(self, obj):
+        representation = super().to_representation(obj)
+        representation["user_2"] = (
+            obj.user_1.pk
+            if obj.user_2 == self.context["request"].user
+            else obj.user_2.pk
+        )
+        return representation
+    
+    
+class MessageListSerializer(serializers.ModelSerializer):
+    message_author = serializers.CharField()
+    
+    class Meta:
+        model = Message
+        fields = ("id", "content", "message_author", "created_at")

@@ -1,3 +1,4 @@
+from django.db.models import CharField, F, Case, When, Value
 from rest_framework.views import PermissionDenied
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework.mixins import CreateModelMixin, DestroyModelMixin, ListModelMixin, RetrieveModelMixin
@@ -5,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from general.api.serializers import CommentSerializer, PostCreateUpdateSerializer, PostListSerializer, PostRetrieveSerializer, ReactionSerializer, UserListSerializer, UserRegistrationSerializer, UserRetrieveSerializer
+from general.api.serializers import ChatSerializer, CommentSerializer, MessageListSerializer, PostCreateUpdateSerializer, PostListSerializer, PostRetrieveSerializer, ReactionSerializer, UserListSerializer, UserRegistrationSerializer, UserRetrieveSerializer
 from general.models import Comment, Post, User
 
 
@@ -118,4 +119,29 @@ class ReactionViewSet(
 ):
     permission_classes = [IsAuthenticated]
     serializer_class = ReactionSerializer
+    
+
+class ChatViewSet(
+    CreateModelMixin,
+    GenericViewSet,
+):
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.action == "messages":
+            return MessageListSerializer
+        return ChatSerializer
+    
+    @action(detail=True, methods=["get"])
+    def messages(self, request, pk=None):
+        messages = self.get_object().messages.filter(chat__id=pk).annotate(
+            message_author=Case(
+                When(author=self.request.user, then=Value("Вы")),
+                default=F("author__first_name"),
+                output_field=CharField(),
+            )
+        ).order_by("-created_at")
+        serializer = self.get_serializer(messages, many=True)
+        return Response(serializer.data)
+    
     
