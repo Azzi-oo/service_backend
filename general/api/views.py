@@ -1,4 +1,4 @@
-from django.db.models import CharField, F, Case, When, Value
+from django.db.models import CharField, F, Case, OuterRef, Subquery, When, Value, Q
 from rest_framework.views import PermissionDenied
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework.mixins import CreateModelMixin, DestroyModelMixin, ListModelMixin, RetrieveModelMixin
@@ -6,8 +6,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from general.api.serializers import ChatSerializer, CommentSerializer, MessageListSerializer, PostCreateUpdateSerializer, PostListSerializer, PostRetrieveSerializer, ReactionSerializer, UserListSerializer, UserRegistrationSerializer, UserRetrieveSerializer
-from general.models import Comment, Post, User
+from general.api.serializers import ChatListSerializer, ChatSerializer, CommentSerializer, MessageListSerializer, MessageSerializer, PostCreateUpdateSerializer, PostListSerializer, PostRetrieveSerializer, ReactionSerializer, UserListSerializer, UserRegistrationSerializer, UserRetrieveSerializer
+from general.models import Chat, Comment, Message, Post, User
 
 
 class UserViewSet(
@@ -123,14 +123,40 @@ class ReactionViewSet(
 
 class ChatViewSet(
     CreateModelMixin,
+    ListModelMixin,
+    DestroyModelMixin,
     GenericViewSet,
 ):
     permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
+        if self.action == "list":
+            return ChatListSerializer
         if self.action == "messages":
             return MessageListSerializer
         return ChatSerializer
+    
+    def get_queryset(self):
+        user = self.request.user
+        
+        last_message_subquery = Message.objects.filter(
+            chat=OuterRef('pk')
+        ).order_by('-created_at').values('created_at')[:1]
+        last_message_content_subquery = Message.objects.filter(
+            chat=OuterRef('pk')
+        ).order_by('-created_at').values('content')[:1]
+        
+        qs = Chat.objects.filter(
+            Q(user_1=user) | Q(user_2=user),
+            messages_isnull=False,
+        ).annotate(
+            last_message_datetime=Subquery(last_message_subquery),
+            last_message_content=Subquery(last_message_content_subquery),
+        ).select_related(
+            "user_1",
+            "user_2",
+        ).order_by("-last_message_datetime").distinct()
+        return qs
     
     @action(detail=True, methods=["get"])
     def messages(self, request, pk=None):
@@ -145,3 +171,16 @@ class ChatViewSet(
         return Response(serializer.data)
     
     
+class MessageViewSet(
+    CreateModelMixin,
+    DestroyModelMixin,
+    GenericViewSet,
+):
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Message.objects.all().order_by("-id")
+    
+    def perform_destroy(self, instance):
+        if instance.author != self.request.user:
+            raise PermissionDenied("Вы не являетесь автором этого сообщения.")
+        instance.delete()
