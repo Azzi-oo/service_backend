@@ -92,6 +92,7 @@ class PostListSerializer(serializers.ModelSerializer):
             "id",
             "author",
             "body",
+            "title",
             "created_at",
         )
         
